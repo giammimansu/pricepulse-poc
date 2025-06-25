@@ -1,0 +1,7 @@
+fastapi
+uvicorn[standard]
+amazon-paapi
+ebaysdk
+python-dotenv
+psycopg2-binary
+sqlalchemy
