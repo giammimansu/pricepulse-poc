@@ -6,7 +6,8 @@ from amazon_paapi import AmazonApi, AmazonApiException
 from ebaysdk.shopping import Connection as Shopping
 from sqlalchemy import create_engine, MetaData, Table, insert
 
-# Load environment\load_dotenv()
+# Load environment variables
+load_dotenv()
 
 # Amazon PA-API configuration
 amazon = AmazonApi(
