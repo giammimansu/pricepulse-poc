@@ -1,37 +1,49 @@
 import os
 import time
 from datetime import datetime
-from sqlalchemy import create_engine, MetaData, Table, insert
+from dotenv import load_dotenv
+from sqlalchemy import create_engine, MetaData, Table
+from sqlalchemy.dialects.postgresql import insert
 from services.amazon_api import get_amazon_price
 from services.ebay_api import get_ebay_price
-from dotenv import load_dotenv
 
+# Load environment
 load_dotenv()
 
-DB_URL = f"postgresql://{os.getenv('POSTGRES_USER')}:{os.getenv('POSTGRES_PASSWORD')}@db:5432/{os.getenv('POSTGRES_DB')}"
+# Database setup
+DB_URL = (
+    f"postgresql://{os.getenv('POSTGRES_USER')}:"
+    f"{os.getenv('POSTGRES_PASSWORD')}@db:5432/{os.getenv('POSTGRES_DB')}"
+)
 engine = create_engine(DB_URL)
-metadata = MetaData(bind=engine)
-prices_tbl = Table('prices', metadata, autoload_with=engine)
+metadata = MetaData()
+prices_table = Table('prices', metadata, autoload_with=engine)
 
-def upsert_price(rec: dict):
-    stmt = insert(prices_tbl).values(**rec).on_conflict_do_nothing(index_elements=['product_id','source','ts'])
+# Upsert helper
+def upsert_price(record: dict):
+    stmt = insert(prices_table).values(**record).on_conflict_do_nothing(
+        index_elements=['product_id', 'source', 'ts']
+    )
     with engine.begin() as conn:
         conn.execute(stmt)
 
+# List of products for POC
 products = [
-    {'source':'amazon','id':'B0BMZYEY1V'},
-    {'source':'ebay','id':'123456789012'}
+    {'source': 'amazon', 'id': 'B0BMZYEY1V'},
+    {'source': 'ebay',   'id': '123456789012'},
 ]
 
 if __name__ == '__main__':
     while True:
         for p in products:
-            if p['source']=='amazon':
-                rec = get_amazon_price(p['id'], sandbox=True)
+            if p['source'] == 'amazon':
+                record = get_amazon_price(p['id'], sandbox=True)
             else:
-                rec = get_ebay_price(p['id'])
-            if rec:
-                upsert_price(rec)
-                print("Inserted:", rec)
+                record = get_ebay_price(p['id'], sandbox=True)
+
+            if record:
+                upsert_price(record)
+                print(f"Inserted: {record}")
             time.sleep(1)
-        time.sleep(3600)
+        # Repeat every cycle (for testing, può essere ridotto)
+        time.sleep(10)

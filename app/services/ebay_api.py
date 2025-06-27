@@ -1,43 +1,52 @@
 import os
 from datetime import datetime
-from amazon_paapi import AmazonApi, AmazonApiException
+from ebaysdk.shopping import Connection as Shopping
 from dotenv import load_dotenv
 
 load_dotenv()
 
-def make_amazon_client(sandbox: bool = False):
+def make_ebay_client(sandbox: bool = False):
     if sandbox:
-        host   = "webservices-sandbox.amazon.com"
-        access = os.getenv("AWS_ACCESS_KEY_ID_SANDBOX")
-        secret = os.getenv("AWS_SECRET_ACCESS_KEY_SANDBOX")
-        tag    = os.getenv("PARTNER_TAG_SANDBOX")
-    else:
-        host   = "webservices.amazon.it"
-        access = os.getenv("AWS_ACCESS_KEY_ID")
-        secret = os.getenv("AWS_SECRET_ACCESS_KEY")
-        tag    = os.getenv("PARTNER_TAG")
-
-    return AmazonApi(
-        access_key=access,
-        secret_key=secret,
-        partner_tag=tag,
-        host=host,
-        region="eu-west-1"
+        # stub senza token reale
+        return None
+    return Shopping(
+        domain='open.api.ebay.com',
+        appid=os.getenv('EBAY_APP_ID'),
+        certid=os.getenv('EBAY_CERT_ID'),
+        devid=os.getenv('EBAY_DEV_ID'),
+        token=os.getenv('EBAY_OAUTH_TOKEN'),
+        config_file=None
     )
 
-def get_amazon_price(asin: str, sandbox: bool = False) -> dict:
-    client = make_amazon_client(sandbox)
-    try:
-        resp = client.get_items(item_ids=[asin])
-        item = resp.items_result.items[0]
-        listing = item.offers.listings[0]
+def get_ebay_price(item_id: str, sandbox: bool = False) -> dict:
+    """
+    Fetch price data for a given eBay ItemID.
+    In sandbox mode restituisce dati fittizi, altrimenti chiama l'API reale.
+    """
+    # stub
+    if sandbox:
         return {
-            "source": "amazon",
-            "product_id": asin,
-            "price": float(listing.price.amount),
-            "currency": listing.price.currency,
-            "ts": datetime.utcnow()
+            'source':     'ebay',
+            'product_id': item_id,
+            'price':      49.90,            # prezzo di esempio
+            'currency':   'EUR',
+            'ts':         datetime.utcnow()
         }
-    except AmazonApiException as e:
-        print(f"[{'SANDBOX' if sandbox else 'PROD'}] Amazon API error: {e}")
+
+    client = make_ebay_client(sandbox=False)
+    try:
+        resp = client.execute(
+            'GetSingleItem',
+            {'ItemID': item_id, 'IncludeSelector': 'Details'}
+        )
+        item = resp.dict().get('Item', {})
+        return {
+            'source':     'ebay',
+            'product_id': item_id,
+            'price':      float(item['CurrentPrice']['value']),
+            'currency':   item['CurrentPrice']['currencyID'],
+            'ts':         datetime.utcnow()
+        }
+    except Exception as e:
+        print(f"[EBAY] API error for ItemID {item_id}: {e}")
         return {}

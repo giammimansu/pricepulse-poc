@@ -1,7 +1,9 @@
 fastapi
 uvicorn[standard]
-amazon-paapi
+python-amazon-paapi
 ebaysdk
 python-dotenv
 psycopg2-binary
 sqlalchemy
+celery
+redis
